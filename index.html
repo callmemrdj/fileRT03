@@ -1,0 +1,1005 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aplikasi Tagihan Warga RT.03</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { inter: ['Inter', 'sans-serif'] },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+
+      .print-card {
+        max-width: 440px;
+        background: #fff;
+        border: 2px solid #1a1a1a;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      .header-stripe {
+        background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%);
+      }
+
+      .dotted-border {
+        border: 2px dashed #9ca3af;
+        border-radius: 8px;
+      }
+
+      table.dues-table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      table.dues-table th,
+      table.dues-table td {
+        border: 1px solid #1a1a1a;
+        padding: 6px 10px;
+        text-align: left;
+        font-size: 13px;
+      }
+      table.dues-table th {
+        background: #1a1a1a;
+        color: #fff;
+        font-weight: 600;
+      }
+      table.dues-table td:nth-child(2) {
+        text-align: right;
+        font-weight: 500;
+      }
+      table.dues-table tr.total-row td {
+        background: #f0f0f0;
+        font-weight: 700;
+        font-size: 14px;
+      }
+      table.dues-table tr.total-row td:nth-child(2) {
+        color: #ea580c;
+      }
+
+      .warning-banner {
+        background: linear-gradient(135deg, #ea580c, #c2410c);
+        animation: pulse-glow 2s ease-in-out infinite;
+      }
+
+      @keyframes pulse-glow {
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.3);
+        }
+        50% {
+          box-shadow: 0 0 12px 4px rgba(234, 88, 12, 0.15);
+        }
+      }
+
+      .taliasih-badge {
+        background: #f5f5f5;
+        border: 1px solid #e5e5e5;
+        border-radius: 8px;
+      }
+
+      .fold-line {
+        border-top: 1px dashed #d4d4d4;
+      }
+
+      .dropdown-item:hover {
+        background: #f5f5f5;
+      }
+      .dropdown-item.active {
+        background: #171717;
+        color: #fff;
+      }
+
+      @keyframes fadeUp {
+        0% {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .animate-fade-up {
+        animation: fadeUp 0.6s ease-out forwards;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .animate-spin {
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes slideDown {
+        0% {
+          opacity: 0;
+          transform: translateY(-8px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .animate-slide-down {
+        animation: slideDown 0.2s ease-out forwards;
+      }
+      .toast-enter {
+        animation: slideDown 0.3s ease-out forwards;
+      }
+
+      /* ==========================================
+           PRINT STYLES 
+           ========================================== */
+      .page-break {
+        page-break-after: always;
+        break-after: page;
+      }
+
+      @media print {
+        body {
+          background: #fff !important;
+          margin: 0;
+          font-size: 12pt;
+        }
+
+        /* Sembunyikan tampilan aplikasi (kartu & tombol) */
+        #appScreen {
+          display: none !important;
+        }
+
+        /* Tampilkan area cetak standar */
+        #appPrint {
+          display: block !important;
+        }
+
+        /* Pastikan area cetak memenuhi kertas */
+        .print-document {
+          width: 100%;
+          max-width: 650px;
+          margin: 0 auto;
+          color: #000;
+          font-family: 'Inter', Arial, sans-serif;
+        }
+        .print-document table {
+          border-collapse: collapse;
+          width: 100%;
+          margin-top: 10px;
+        }
+        .print-document th,
+        .print-document td {
+          border: 1px solid #000;
+          padding: 6px 8px;
+          text-align: left;
+          font-size: 11pt;
+        }
+        .print-document th {
+          background: #eee;
+          font-weight: 600;
+        }
+        .print-document td:nth-child(2) {
+          text-align: right;
+        }
+        .print-document td:nth-child(3) {
+          text-align: left;
+          vertical-align: top;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-neutral-100 min-h-screen">
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-[100] flex flex-col gap-2"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white/90 z-50 flex items-center justify-center">
+      <div class="text-center">
+        <div class="w-10 h-10 border-3 border-neutral-200 border-t-neutral-900 rounded-full animate-spin mx-auto mb-4" style="border-width: 3px"></div>
+        <p class="text-sm text-neutral-500">Memuat data warga...</p>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- LAYAR TAMPILAN WEB (SCREEN) - Tampilan Kartu Elegan          -->
+    <!-- ============================================================ -->
+    <div id="appScreen" class="max-w-5xl mx-auto px-4 py-6">
+      <!-- Header -->
+      <header class="no-print mb-6 animate-fade-up">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-black rounded-xl flex items-center justify-center flex-shrink-0">
+              <i data-lucide="home" class="w-5 h-5 text-white"></i>
+            </div>
+            <div>
+              <h1 class="text-xl font-bold text-neutral-900 tracking-tight">UNDANGAN PERTEMUAN WARGA</h1>
+              <p class="text-xs text-neutral-400">RT.03 RW.17 — Kel. Srondol Wetan</p>
+            </div>
+          </div>
+          <div id="statusBadge" class="flex items-center gap-2 bg-white border border-neutral-200 rounded-lg px-3 py-2 self-start sm:self-auto">
+            <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
+            <span class="text-xs font-medium text-neutral-500">Demo Mode</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Search & Controls -->
+      <section class="no-print mb-6 animate-fade-up" style="animation-delay: 0.1s; opacity: 0">
+        <div class="bg-white rounded-2xl border border-neutral-200 p-4 sm:p-5 shadow-sm">
+          <div class="flex flex-col sm:flex-row gap-3">
+            <div class="relative flex-1">
+              <div class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
+                <i data-lucide="search" class="w-4 h-4"></i>
+              </div>
+              <input
+                type="text"
+                id="searchInput"
+                placeholder="Ketik nama warga..."
+                autocomplete="off"
+                class="w-full pl-10 pr-4 py-2.5 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all"
+                onfocus="showDropdown()"
+                oninput="filterDropdown()"
+              />
+              <div id="dropdown" class="absolute z-50 w-full mt-1 bg-white border border-neutral-200 rounded-lg shadow-xl max-h-64 overflow-y-auto hidden animate-slide-down"></div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                onclick="prevResident()"
+                id="btnPrev"
+                class="w-10 h-10 flex items-center justify-center border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                disabled
+              >
+                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+              </button>
+              <span id="navCounter" class="text-sm font-medium text-neutral-500 min-w-[80px] text-center">0 / 0</span>
+              <button
+                onclick="nextResident()"
+                id="btnNext"
+                class="w-10 h-10 flex items-center justify-center border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                disabled
+              >
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+          <div class="mt-3 flex items-center gap-2">
+            <i data-lucide="users" class="w-3.5 h-3.5 text-neutral-400"></i>
+            <p class="text-xs text-neutral-400" id="residentCount">Memuat data...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Action Buttons -->
+      <section class="no-print mb-6 flex flex-wrap items-center gap-3 animate-fade-up" style="animation-delay: 0.2s; opacity: 0">
+        <button onclick="window.print()" class="flex items-center gap-2 bg-black text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors shadow-sm">
+          <i data-lucide="printer" class="w-4 h-4"></i>
+          Cetak
+        </button>
+        <!-- Tombol CETAK SEMUA -->
+        <button onclick="printAllResidents()" class="flex items-center gap-2 bg-orange-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors shadow-sm">
+          <i data-lucide="layers" class="w-4 h-4"></i>
+          Cetak Semua
+        </button>
+        <button onclick="toggleDarkMode()" id="btnDarkMode" class="flex items-center gap-2 bg-white text-neutral-900 px-5 py-2.5 rounded-lg text-sm font-medium border border-neutral-200 hover:bg-neutral-50 transition-colors shadow-sm">
+          <i data-lucide="moon" class="w-4 h-4" id="darkModeIcon"></i>
+          <span id="darkModeLabel">Mode Gelap</span>
+        </button>
+        <button onclick="refreshData()" class="flex items-center gap-2 bg-white text-neutral-900 px-5 py-2.5 rounded-lg text-sm font-medium border border-neutral-200 hover:bg-neutral-50 transition-colors shadow-sm">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+          Refresh
+        </button>
+      </section>
+
+      <!-- Card Preview -->
+      <section class="flex justify-center animate-fade-up" style="animation-delay: 0.3s; opacity: 0">
+        <div class="print-card shadow-2xl" id="mainCard">
+          <div class="header-stripe px-6 py-5 text-white">
+            <div class="flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-bold tracking-tight">PERTEMUAN WARGA</h2>
+                <p class="text-xs text-neutral-400 mt-0.5">RT.03 / RW.17 — Kel. Srondol Wetan</p>
+              </div>
+              <div class="bg-white/10 backdrop-blur-sm rounded-lg px-3 py-1.5 text-center">
+                <p class="text-[10px] text-neutral-400 uppercase tracking-wider font-medium">Bulan</p>
+                <p class="text-sm font-bold" id="cardPeriode">-</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-6 pt-5 pb-4">
+            <div class="dotted-border p-4">
+              <p class="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mb-2">Kepada Yth.</p>
+              <p class="text-base font-bold text-neutral-900 tracking-tight" id="cardNama">-</p>
+              <p class="text-sm text-neutral-500 mt-0.5" id="cardAlamat">-</p>
+            </div>
+          </div>
+
+          <div class="px-6 pb-4">
+            <div class="bg-neutral-50 rounded-lg p-4 border border-neutral-200" id="meetingSection">
+              <p class="text-sm text-neutral-600 mb-3">Salam Hormat,</p>
+              <p class="text-sm text-neutral-700 leading-relaxed mb-4">Dimohon kehadirannya dalam pertemuan rutin RT.03 RW.17 Kel. Srondol Wetan kota Semarang pada:</p>
+              <div class="bg-white rounded-lg p-3 border border-neutral-200 space-y-2">
+                <div class="flex items-start gap-3">
+                  <i data-lucide="calendar-days" class="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0"></i>
+                  <div>
+                    <p class="text-[10px] text-neutral-400 uppercase tracking-wider font-medium">Hari / Tgl / Waktu</p>
+                    <p class="text-sm font-semibold text-neutral-900" id="cardHariTanggal">-</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <i data-lucide="map-pin" class="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0"></i>
+                  <div>
+                    <p class="text-[10px] text-neutral-400 uppercase tracking-wider font-medium">Tempat</p>
+                    <p class="text-sm font-semibold text-neutral-900" id="cardTempat">-</p>
+                    <p class="text-xs text-neutral-500" id="cardKetTempat">-</p>
+                  </div>
+                </div>
+              </div>
+              <!--
+              <div class="mt-3 flex items-start gap-2 bg-orange-50 border border-orange-200 rounded-lg p-3">
+                <i data-lucide="alert-circle" class="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0"></i>
+                <p class="text-xs text-orange-800 leading-relaxed">Mengingat kegiatan ini bersifat <strong>wajib</strong> yang mengikat seluruh kepala keluarga di RT.03, dimohon untuk dapat hadir tepat waktu.</p>
+              </div>
+            -->
+              <p class="text-sm text-neutral-600 mt-3">Terima Kasih.</p>
+              <p class="text-sm font-semibold text-neutral-900 mt-1">Salam Guyub.</p>
+            </div>
+          </div>
+
+          <div class="px-6"><div class="fold-line"></div></div>
+
+          <div class="px-6 pt-4 pb-4">
+            <div class="flex items-center gap-2 mb-3">
+              <i data-lucide="wallet" class="w-4 h-4 text-orange-600"></i>
+              <h3 class="text-sm font-bold text-neutral-900 uppercase tracking-wider" id="duesTitle">Kewajiban Iuran</h3>
+            </div>
+            <div class="rounded-lg overflow-hidden">
+              <table class="dues-table">
+                <thead>
+                  <tr>
+                    <th>Kewajiban</th>
+                    <th>Jumlah</th>
+                  </tr>
+                </thead>
+                <tbody id="duesTableBody">
+                  <tr>
+                    <td colspan="2" class="text-center text-neutral-400 py-6">Pilih warga terlebih dahulu</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <!--
+            <div class="mt-3 flex flex-col gap-1.5">
+              <div class="flex items-start gap-2">
+                <span class="text-orange-600 font-bold text-xs mt-0.5">*</span>
+                <p class="text-xs text-neutral-500">Harap membayar dengan uang pas</p>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="text-orange-600 font-bold text-xs mt-0.5">**</span>
+                <p class="text-xs text-neutral-500">Harap dibawa saat membayar</p>
+              </div>
+            </div>
+          -->
+            <div class="mt-4" id="taliasihSection" style="display: none">
+              <p class="text-[10px] text-neutral-400 uppercase tracking-wider font-medium mb-2">Taliasih</p>
+              <div class="flex flex-wrap gap-2" id="taliasihBadges"></div>
+            </div>
+          </div>
+
+          <div class="warning-banner px-6 py-3 flex items-center gap-3">
+            <i data-lucide="shield-alert" class="w-5 h-5 text-white flex-shrink-0"></i>
+            <p class="text-xs font-bold text-white tracking-wide">PERHATIAN!! Plastik dan Kartu ini tidak boleh hilang</p>
+          </div>
+        </div>
+      </section>
+
+      <footer class="no-print mt-8 text-center animate-fade-up" style="animation-delay: 0.4s; opacity: 0">
+        <p class="text-xs text-neutral-400">RT.03 RW.17 — Kelurahan Srondol Wetan — Kota Semarang</p>
+      </footer>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- AREA CETAK (PRINT) - Muncul saat Ctrl+P / Cetak             -->
+    <!-- ============================================================ -->
+    <div id="appPrint" class="hidden">
+      <!-- Konten akan diisi secara dinamis oleh JavaScript -->
+    </div>
+
+    <!-- ======================== JAVASCRIPT ======================== -->
+    <script>
+      // ============================================================
+      //  KONFIGURASI
+      // ============================================================
+      const CONFIG = {
+        APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxjjdydO--Pp9J83D3PTNIx-uoebhcCFps9mzbBrbqEJNI7LTgNlxKTJanTZjDUrsBKqg/exec',
+        DEMO_MODE: false,
+      };
+
+      // ============================================================
+      //  DATA DEMO
+      // ============================================================
+      const DEMO_DATA = [
+        {
+          No: 1,
+          Nama: 'Muh. Shodiq Priyatno',
+          Alamat: 'Saninten Timur 2 No. 65',
+          Bulan: 'Mei',
+          Tahun: 2026,
+          Hari: 'Jumat',
+          Tanggal: '8 Mei 2026',
+          Tempat: 'GARSANDA',
+          Ket_Tempat: 'Kel. Achiyar Asmuin/91',
+          Kas_RW: 8000,
+          Kas_RT: 16000,
+          Pembangunan: 6000,
+          Lingkungan: 10000,
+          Tali_Asih: 15000,
+          Koperasi: 4000,
+          Arisan: 10000,
+          Tunggakan: 0,
+          Total: 69000,
+          Taliasih_1: 'Ibu Hanatun',
+          Taliasih_2: 'Bapak Udoko',
+          Taliasih_3: 'Bapak Sani',
+        },
+        {
+          No: 2,
+          Nama: 'Ahmad Fauzi',
+          Alamat: 'Saninten Timur 2 No. 12',
+          Bulan: 'Mei',
+          Tahun: 2026,
+          Hari: 'Jumat',
+          Tanggal: '8 Mei 2026',
+          Tempat: 'GARSANDA',
+          Ket_Tempat: 'Kel. Achiyar Asmuin/91',
+          Kas_RW: 8000,
+          Kas_RT: 16000,
+          Pembangunan: 6000,
+          Lingkungan: 10000,
+          Tali_Asih: 15000,
+          Koperasi: 4000,
+          Arisan: 10000,
+          Tunggakan: 0,
+          Total: 74000,
+          Taliasih_1: 'Ibu Hanatun',
+          Taliasih_2: 'Bapak Udoko',
+          Taliasih_3: 'Bapak Sani',
+        },
+        {
+          No: 3,
+          Nama: 'Siti Aminah',
+          Alamat: 'Saninten Timur 2 No. 28',
+          Bulan: 'Mei',
+          Tahun: 2026,
+          Hari: 'Jumat',
+          Tanggal: '8 Mei 2026',
+          Tempat: 'GARSANDA',
+          Ket_Tempat: 'Kel. Achiyar Asmuin/91',
+          Kas_RW: 8000,
+          Kas_RT: 16000,
+          Pembangunan: 6000,
+          Lingkungan: 10000,
+          Tali_Asih: 15000,
+          Koperasi: 4000,
+          Arisan: 10000,
+          Tunggakan: 0,
+          Total: 69000,
+          Taliasih_1: 'Ibu Hanatun',
+          Taliasih_2: 'Bapak Udoko',
+          Taliasih_3: 'Bapak Sani',
+        },
+        {
+          No: 4,
+          Nama: 'Bambang Supriyo',
+          Alamat: 'Saninten Timur 1 No. 5',
+          Bulan: 'Mei',
+          Tahun: 2026,
+          Hari: 'Jumat',
+          Tanggal: '8 Mei 2026',
+          Tempat: 'GARSANDA',
+          Ket_Tempat: 'Kel. Achiyar Asmuin/91',
+          Kas_RW: 8000,
+          Kas_RT: 16000,
+          Pembangunan: 6000,
+          Lingkungan: 10000,
+          Tali_Asih: 15000,
+          Koperasi: 4000,
+          Arisan: 10000,
+          Tunggakan: 0,
+          Total: 81000,
+          Taliasih_1: 'Ibu Hanatun',
+          Taliasih_2: 'Bapak Udoko',
+          Taliasih_3: 'Bapak Sani',
+        },
+        {
+          No: 5,
+          Nama: 'Dewi Ratnasari',
+          Alamat: 'Saninten Barat 3 No. 17',
+          Bulan: 'Mei',
+          Tahun: 2026,
+          Hari: 'Jumat',
+          Tanggal: '8 Mei 2026',
+          Tempat: 'GARSANDA',
+          Ket_Tempat: 'Kel. Achiyar Asmuin/91',
+          Kas_RW: 8000,
+          Kas_RT: 16000,
+          Pembangunan: 6000,
+          Lingkungan: 10000,
+          Tali_Asih: 15000,
+          Koperasi: 4000,
+          Arisan: 10000,
+          Tunggakan: 0,
+          Total: 69000,
+          Taliasih_1: 'Ibu Hanatun',
+          Taliasih_2: 'Bapak Udoko',
+          Taliasih_3: 'Bapak Sani',
+        },
+      ];
+
+      // ============================================================
+      //  STATE
+      // ============================================================
+      let residents = [];
+      let currentIndex = -1;
+      let isDark = false;
+
+      // ============================================================
+      //  FORMAT ANGKA KE RUPIAH
+      // ============================================================
+      function formatRupiah(val) {
+        const num = parseNumber(val);
+        if (num === 0) return 'Rp. 0';
+        return 'Rp. ' + num.toLocaleString('id-ID');
+      }
+
+      function parseNumber(val) {
+        if (typeof val === 'number') return val;
+        if (!val && val !== 0) return 0;
+        const str = String(val)
+          .replace(/[^0-9,\-]/g, '')
+          .replace(',', '.');
+        const num = parseFloat(str);
+        return isNaN(num) ? 0 : num;
+      }
+
+      // ============================================================
+      //  FETCH DATA
+      // ============================================================
+      async function fetchSheetData() {
+        if (CONFIG.DEMO_MODE) return DEMO_DATA;
+        if (!CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL === 'GANTI_DENGAN_URL_WEB_APP_ANDA') {
+          showToast('URL Apps Script belum diatur. Menggunakan data demo.', 'warning');
+          return DEMO_DATA;
+        }
+        try {
+          const response = await fetch(CONFIG.APPS_SCRIPT_URL);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const result = await response.json();
+          if (result.status === 'error') throw new Error(result.message || 'Error dari server');
+          if (!result.data || result.data.length === 0) throw new Error('Data kosong');
+          showToast(`Berhasil memuat ${result.data.length} data warga`, 'success');
+          return result.data;
+        } catch (err) {
+          console.error('Gagal memuat data:', err.message);
+          showToast(`Gagal memuat data: ${err.message}. Menggunakan data demo.`, 'error');
+          return DEMO_DATA;
+        }
+      }
+
+      // ============================================================
+      //  HELPER: BUAT HTML UNTUK AREA CETAK
+      // ============================================================
+      function generatePrintHtml(data) {
+        if (!data) return '';
+
+        const periode = (data.Bulan || '-') + ' ' + (data.Tahun || '');
+        const hariTanggal = [data.Hari, data.Tanggal].filter(Boolean).join(', ');
+        const taliasihNames = [data.Taliasih_1, data.Taliasih_2, data.Taliasih_3].filter(Boolean);
+        const keteranganHtml = taliasihNames.length > 0 ? taliasihNames.map((name, i) => `${i + 1}. ${name}`).join('<br>') : '-';
+
+        const duesItems = [
+          { label: 'Kas RW XVII', value: data.Kas_RW },
+          { label: 'Kas RT.03', value: data.Kas_RT },
+          { label: 'Pembangunan', value: data.Pembangunan },
+          { label: 'Lingkungan', value: data.Lingkungan },
+          { label: 'Tali Asih', value: data.Tali_Asih },
+          { label: 'Koperasi', value: data.Koperasi },
+          { label: 'Arisan', value: data.Arisan },
+          { label: 'Tunggakan', value: data.Tunggakan },
+        ];
+
+        let tableHtml = '';
+        const totalItems = duesItems.length;
+
+        duesItems.forEach((item, index) => {
+          if (index === 0) {
+            tableHtml += `
+                    <tr>
+                        <td>${item.label}</td>
+                        <td>${formatRupiah(item.value)}</td>
+                        <td rowspan="${totalItems}" style="vertical-align: top; padding: 8px; font-size: 10pt;">
+                            ${keteranganHtml}
+                        </td>
+                    </tr>
+                `;
+          } else {
+            tableHtml += `
+                    <tr>
+                        <td>${item.label}</td>
+                        <td>${formatRupiah(item.value)}</td>
+                    </tr>
+                `;
+          }
+        });
+
+        tableHtml += `
+            <tr style="font-weight:bold; background:#f9f9f9;">
+                <td>JUMLAH</td>
+                <td>${formatRupiah(data.Total)}</td>
+                <td></td>
+            </tr>
+        `;
+
+        return `
+            <div class="print-document">
+                <p style="margin-bottom: 16px; line-height: 1.6;">
+                    <strong>Kepada Yth.</strong><br>
+                    Nama: <strong>${data.Nama || '-'}</strong><br>
+                    Alamat: <span>${data.Alamat || '-'}</span>
+                </p>
+                
+                <p style="margin-bottom: 8px;">Salam Hormat,</p>
+                <p style="margin-bottom: 16px;">
+                    Dimohon kehadirannya dalam pertemuan rutin RT.03 RW.17 Kel. Srondol Wetan kota Semarang pada:
+                </p>
+                
+                <p style="margin-left: 20px; margin-bottom: 4px;">
+                    Tanggal: <strong>${hariTanggal || '-'}</strong>
+                </p>
+                <p style="margin-left: 20px; margin-bottom: 16px;">
+                    Tempat: <strong>${data.Tempat || '-'}</strong> (<span>${data.Ket_Tempat || '-'}</span>)
+                </p>
+
+                <p style="margin-bottom: 8px;">
+                    <strong>Kewajiban Iuran: <span>${periode}</span></strong>
+                </p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 40%;">Kewajiban</th>
+                            <th style="width: 30%;">Jumlah</th>
+                            <th style="width: 30%;">Keterangan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableHtml}
+                    </tbody>
+                </table>
+
+                <div style="margin-top: 24px; padding-top: 12px; border-top: 1px solid #ccc;">
+                    <p style="font-weight: bold; font-size: 10pt;">PERHATIAN!! Plastik dan Kartu ini tidak boleh hilang</p>
+                </div>
+            </div>
+        `;
+      }
+
+      // ============================================================
+      //  RENDER CARD (Layar Web & Cetak Satuan)
+      // ============================================================
+      function renderCard(data) {
+        if (!data) return;
+
+        const periode = (data.Bulan || '-') + ' ' + (data.Tahun || '');
+        const hariTanggal = [data.Hari, data.Tanggal].filter(Boolean).join(', ');
+        const taliasihNames = [data.Taliasih_1, data.Taliasih_2, data.Taliasih_3].filter(Boolean);
+
+        const duesItems = [
+          { label: 'Kas RW XVII', value: data.Kas_RW },
+          { label: 'Kas RT.03', value: data.Kas_RT },
+          { label: 'Pembangunan', value: data.Pembangunan },
+          { label: 'Lingkungan', value: data.Lingkungan },
+          { label: 'Tali Asih', value: data.Tali_Asih },
+          { label: 'Koperasi', value: data.Koperasi },
+          { label: 'Arisan', value: data.Arisan },
+          { label: 'Tunggakan', value: data.Tunggakan },
+        ];
+
+        // --- UPDATE TAMPILAN WEB (SCREEN) ---
+        document.getElementById('cardPeriode').textContent = periode;
+        document.getElementById('cardNama').textContent = data.Nama || '-';
+        document.getElementById('cardAlamat').textContent = data.Alamat || '-';
+        document.getElementById('cardHariTanggal').textContent = hariTanggal || '-';
+        document.getElementById('cardTempat').textContent = data.Tempat || '-';
+        document.getElementById('cardKetTempat').textContent = data.Ket_Tempat || '-';
+        document.getElementById('duesTitle').textContent = `Kewajiban Iuran — ${data.Bulan || ''} ${data.Tahun || ''}`;
+
+        let screenTableHtml = '';
+        duesItems.forEach((item) => {
+          screenTableHtml += `<tr><td>${item.label}</td><td>${formatRupiah(item.value)}</td></tr>`;
+        });
+        screenTableHtml += `<tr class="total-row"><td>JUMLAH</td><td>${formatRupiah(data.Total)}</td></tr>`;
+        document.getElementById('duesTableBody').innerHTML = screenTableHtml;
+
+        const taliasihSection = document.getElementById('taliasihSection');
+        const taliasihBadges = document.getElementById('taliasihBadges');
+        if (taliasihNames.length > 0) {
+          taliasihSection.style.display = 'block';
+          taliasihBadges.innerHTML = taliasihNames
+            .map(
+              (name) => `
+                <div class="taliasih-badge px-3 py-1.5 flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-500"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span class="text-xs font-medium text-neutral-700">${name}</span>
+                </div>
+            `,
+            )
+            .join('');
+        } else {
+          taliasihSection.style.display = 'none';
+        }
+
+        // --- UPDATE TAMPILAN CETAK SATUAN (Jika tombol Cetak biasa yang ditekan) ---
+        document.getElementById('appPrint').innerHTML = generatePrintHtml(data);
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
+
+      // ============================================================
+      //  CETAK SEMUA WARGA
+      // ============================================================
+      function printAllResidents() {
+        if (residents.length === 0) {
+          showToast('Tidak ada data warga untuk dicetak.', 'warning');
+          return;
+        }
+
+        let allHtml = '';
+        residents.forEach((resident, index) => {
+          allHtml += generatePrintHtml(resident);
+
+          // Tambahkan page break setiap selesai render 1 warga,
+          // kecuali warga terakhir agar tidak ada kertas kosong di akhir
+          if (index < residents.length - 1) {
+            allHtml += '<div class="page-break"></div>';
+          }
+        });
+
+        // Masukkan seluruh HTML ke area cetak
+        const printArea = document.getElementById('appPrint');
+        printArea.innerHTML = allHtml;
+
+        // Trigger dialog cetak
+        window.print();
+
+        // Kembalikan area cetak ke tampilan warga yang sedang aktif di layar
+        // Menggunakan event listener afterprint agar restore terjadi setelah dialog cetak selesai/dibatalkan
+        const restorePrintArea = () => {
+          if (currentIndex >= 0 && currentIndex < residents.length) {
+            printArea.innerHTML = generatePrintHtml(residents[currentIndex]);
+          }
+          window.removeEventListener('afterprint', restorePrintArea);
+        };
+        window.addEventListener('afterprint', restorePrintArea);
+
+        // Fallback jika browser tidak support afterprint dengan baik
+        setTimeout(() => {
+          if (currentIndex >= 0 && currentIndex < residents.length) {
+            printArea.innerHTML = generatePrintHtml(residents[currentIndex]);
+          }
+        }, 1000);
+      }
+
+      // ============================================================
+      //  DROPDOWN / SEARCH
+      // ============================================================
+      function populateDropdown(filteredData) {
+        const dropdown = document.getElementById('dropdown');
+        const data = filteredData || residents;
+        if (data.length === 0) {
+          dropdown.innerHTML = `<div class="px-4 py-3 text-sm text-neutral-400 text-center">Warga tidak ditemukan</div>`;
+          return;
+        }
+        dropdown.innerHTML = data
+          .map((r) => {
+            const realIndex = residents.indexOf(r);
+            const isActive = realIndex === currentIndex;
+            return `
+                <div class="dropdown-item ${isActive ? 'active' : ''} px-4 py-2.5 cursor-pointer transition-colors" onclick="selectResident(${realIndex})">
+                    <p class="text-sm font-medium">${r.Nama}</p>
+                    <p class="text-xs ${isActive ? 'text-neutral-300' : 'text-neutral-400'}">${r.Alamat || ''}</p>
+                </div>
+            `;
+          })
+          .join('');
+      }
+
+      function showDropdown() {
+        document.getElementById('dropdown').classList.remove('hidden');
+        populateDropdown();
+      }
+
+      function filterDropdown() {
+        const query = document.getElementById('searchInput').value.toLowerCase().trim();
+        const dropdown = document.getElementById('dropdown');
+        dropdown.classList.remove('hidden');
+        if (!query) {
+          populateDropdown();
+          return;
+        }
+        const filtered = residents.filter((r) => (r.Nama || '').toLowerCase().includes(query) || (r.Alamat || '').toLowerCase().includes(query));
+        populateDropdown(filtered);
+      }
+
+      function selectResident(index) {
+        if (index < 0 || index >= residents.length) return;
+        currentIndex = index;
+        const data = residents[index];
+        document.getElementById('searchInput').value = data.Nama;
+        document.getElementById('dropdown').classList.add('hidden');
+        renderCard(data);
+        updateNavigation();
+      }
+
+      // ============================================================
+      //  NAVIGATION
+      // ============================================================
+      function updateNavigation() {
+        const total = residents.length;
+        document.getElementById('navCounter').textContent = total > 0 ? `${currentIndex + 1} / ${total}` : '0 / 0';
+        document.getElementById('btnPrev').disabled = currentIndex <= 0;
+        document.getElementById('btnNext').disabled = currentIndex >= total - 1;
+      }
+
+      function prevResident() {
+        if (currentIndex > 0) selectResident(currentIndex - 1);
+      }
+      function nextResident() {
+        if (currentIndex < residents.length - 1) selectResident(currentIndex + 1);
+      }
+
+      // ============================================================
+      //  TOAST
+      // ============================================================
+      function showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        const colors = { success: 'bg-green-600', error: 'bg-red-600', warning: 'bg-yellow-600', info: 'bg-neutral-800' };
+        const icons = { success: 'check-circle', error: 'x-circle', warning: 'alert-triangle', info: 'info' };
+        const toast = document.createElement('div');
+        toast.className = `toast-enter flex items-center gap-2 ${colors[type] || colors.info} text-white px-4 py-3 rounded-lg shadow-xl text-sm font-medium max-w-sm`;
+        toast.innerHTML = `<i data-lucide="${icons[type] || icons.info}" class="w-4 h-4 flex-shrink-0"></i><span>${message}</span>`;
+        container.appendChild(toast);
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        setTimeout(() => {
+          toast.style.transition = 'opacity 0.3s, transform 0.3s';
+          toast.style.opacity = '0';
+          toast.style.transform = 'translateX(20px)';
+          setTimeout(() => toast.remove(), 300);
+        }, 4000);
+      }
+
+      // ============================================================
+      //  DARK MODE
+      // ============================================================
+      function toggleDarkMode() {
+        isDark = !isDark;
+        const card = document.getElementById('mainCard');
+        const body = document.body;
+        const label = document.getElementById('darkModeLabel');
+        if (isDark) {
+          body.classList.remove('bg-neutral-100');
+          body.classList.add('bg-neutral-900');
+          card.style.background = '#1a1a1a';
+          card.style.borderColor = '#404040';
+          card.querySelectorAll('.dotted-border').forEach((el) => {
+            el.style.borderColor = '#525252';
+            el.style.background = '#262626';
+          });
+          card.querySelectorAll('.bg-neutral-50').forEach((el) => {
+            el.style.background = '#1f1f1f';
+            el.style.borderColor = '#333';
+          });
+          card.querySelectorAll('.bg-white.rounded-lg').forEach((el) => {
+            el.style.background = '#262626';
+            el.style.borderColor = '#404040';
+          });
+          card.querySelectorAll('.taliasih-badge').forEach((el) => {
+            el.style.background = '#262626';
+            el.style.borderColor = '#404040';
+          });
+          card.querySelectorAll('.fold-line').forEach((el) => {
+            el.style.borderColor = '#404040';
+          });
+          card.querySelectorAll('table.dues-table td').forEach((td) => {
+            td.style.borderColor = '#404040';
+            td.style.color = '#e5e5e5';
+          });
+          card.querySelectorAll('table.dues-table th').forEach((th) => {
+            th.style.borderColor = '#525252';
+          });
+          card.querySelectorAll('.total-row td').forEach((td) => {
+            td.style.background = '#2a2a2a';
+          });
+          card.querySelectorAll('p, span').forEach((el) => {
+            if (!el.closest('.header-stripe') && !el.closest('.warning-banner')) {
+              const cls = el.className;
+              if (cls.includes('text-neutral-900')) el.style.color = '#e5e5e5';
+              if (cls.includes('text-neutral-700')) el.style.color = '#d4d4d4';
+              if (cls.includes('text-neutral-600')) el.style.color = '#a3a3a3';
+              if (cls.includes('text-neutral-500')) el.style.color = '#a3a3a3';
+              if (cls.includes('text-neutral-400')) el.style.color = '#737373';
+            }
+          });
+          label.textContent = 'Mode Terang';
+        } else {
+          location.reload();
+        }
+      }
+
+      // ============================================================
+      //  REFRESH & LOAD
+      // ============================================================
+      async function refreshData() {
+        document.getElementById('loadingOverlay').style.display = 'flex';
+        residents = [];
+        currentIndex = -1;
+        await loadData();
+        document.getElementById('loadingOverlay').style.display = 'none';
+      }
+
+      async function loadData() {
+        residents = await fetchSheetData();
+        const badge = document.getElementById('statusBadge');
+        badge.innerHTML = CONFIG.DEMO_MODE
+          ? `<span class="w-2 h-2 rounded-full bg-yellow-400"></span><span class="text-xs font-medium text-neutral-500">Demo Mode</span>`
+          : `<span class="w-2 h-2 rounded-full bg-green-400"></span><span class="text-xs font-medium text-neutral-500">Live Data</span>`;
+
+        document.getElementById('residentCount').textContent = residents.length > 0 ? `${residents.length} warga terdaftar` : 'Tidak ada data';
+        updateNavigation();
+        if (residents.length > 0) selectResident(0);
+        document.getElementById('loadingOverlay').style.display = 'none';
+      }
+
+      // ============================================================
+      //  KEYBOARD & CLICK EVENTS
+      // ============================================================
+      document.addEventListener('keydown', function (e) {
+        if (document.activeElement.tagName !== 'INPUT') {
+          if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            prevResident();
+          } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            nextResident();
+          }
+        }
+        if (e.key === 'Escape') document.getElementById('dropdown').classList.add('hidden');
+      });
+
+      document.addEventListener('click', function (e) {
+        if (!document.getElementById('searchInput').parentElement.contains(e.target)) {
+          document.getElementById('dropdown').classList.add('hidden');
+        }
+      });
+
+      // ============================================================
+      //  INIT
+      // ============================================================
+      document.addEventListener('DOMContentLoaded', async function () {
+        await loadData();
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      });
+    </script>
+  </body>
+</html>
