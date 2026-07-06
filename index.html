@@ -626,9 +626,9 @@
           if (index === 0) {
             tableHtml += `
                     <tr>
-                        <td>${item.label}</td>
-                        <td>${formatRupiah(item.value)}</td>
-                        <td rowspan="${totalItems}" style="vertical-align: top; padding: 8px; font-size: 10pt;">
+                        <td style="font-size: 13pt;">${item.label}</td>
+                        <td style="font-size: 13pt;">${formatRupiah(item.value)}</td>
+                        <td rowspan="${totalItems}" style="vertical-align: top; padding: 8px; font-size: 12pt;">
                             ${keteranganHtml}
                         </td>
                     </tr>
@@ -636,8 +636,8 @@
           } else {
             tableHtml += `
                     <tr>
-                        <td>${item.label}</td>
-                        <td>${formatRupiah(item.value)}</td>
+                        <td style="font-size: 13pt;">${item.label}</td>
+                        <td style="font-size: 13pt;">${formatRupiah(item.value)}</td>
                     </tr>
                 `;
           }
@@ -646,7 +646,7 @@
         tableHtml += `
             <tr style="font-weight:bold; background:#f9f9f9;">
                 <td>JUMLAH</td>
-                <td>${formatRupiah(data.Total)}</td>
+                <td style="font-size: 14pt;">${formatRupiah(data.Total)}</td>
                 <td></td>
             </tr>
         `;
